@@ -1,0 +1,11 @@
+1 810             ! step
+400 400           ! nx, ny grid
+0.0 2.0        ! R range (kpc)
+-49.999 85.0        ! Vrot range (kpc)
+0               ! 0: gas, 1: DM, 2: star
+8.0             ! smoothing length
+1               ! if not 0, only select gas in specific T and nh range
+-6.0 4.0        ! Log T (K) range
+0.0 10.0        ! Log nh (cm^-3) range 
+1               ! if not, output stellar R and Vrot data for age range below
+0.0 0.005       ! age range (Gyr)
