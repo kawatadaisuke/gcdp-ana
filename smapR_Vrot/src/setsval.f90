@@ -58,28 +58,28 @@ subroutine setsval(np,xp,yp,hm,nx,ny,xl,xh,yl,yh,fval)
 !            write(60,'(2(1pE13.5))') xp(pn),yp(pn)
 ! x
             ixm0=(xp(pn)-hm-xsm)/dx
-            if(ixm0.lt.1) then
+            if(ixm0.lt.0) then
               ixm0=0
-            else if(ixm0.gt.nx) then
+            else if(ixm0.gt.nx-1) then
               ixm0=nx-1
             endif
             ixm1=(xp(pn)+hm-xsm)/dx
-            if(ixm1.lt.1) then
+            if(ixm1.lt.0) then
               ixm1=0
-            else if(ixm1.gt.nx) then
+            else if(ixm1.gt.nx-1) then
               ixm1=nx-1
             endif
 ! y
             iym0=(yp(pn)-hm-ysm)/dy
-            if(iym0.lt.1) then
+            if(iym0.lt.0) then
               iym0=0
-            else if(iym1.gt.ny) then
+            else if(iym1.gt.ny-1) then
               iym0=ny-1
             endif
             iym1=(yp(pn)+hm-ysm)/dy
-            if(iym1.lt.1) then
+            if(iym1.lt.0) then
               iym1=0
-            else if(iym1.gt.ny) then
+            else if(iym1.gt.ny-1) then
               iym1=ny-1
             endif
             do j=iym0,iym1
