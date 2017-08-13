@@ -124,8 +124,8 @@ subroutine setsval(np,xp,yp,hm,nx,ny,xl,xh,yl,yh,fval)
         allocate(tdvr(0:ntm-1))
 
         nc=0
-        do j=1,ny
-          do i=1,nx
+        do j=0,ny-1
+          do i=0,nx-1
             tdvs(nc)=fval(i,j)
             tdvr(nc)=0.0d0
             nc=nc+1
@@ -134,8 +134,8 @@ subroutine setsval(np,xp,yp,hm,nx,ny,xl,xh,yl,yh,fval)
         call MPI_ALLREDUCE(tdvs,tdvr,ntm,MPI_DOUBLE_PRECISION &
          ,MPI_SUM,MPI_COMM_WORLD,ierr)
         nc=0
-        do j=1,ny
-          do i=1,nx
+        do j=0,ny-1
+          do i=0,nx-1
             fval(i,j)=tdvr(nc)
             nc=nc+1
           enddo
