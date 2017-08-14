@@ -1,0 +1,14 @@
+810           ! step
+0             ! 0: gas, 1: DM, 2: star (only gas at the moment)
+4.0 10.0     ! fmin max
+1             ! if not 0, plot with log
+1             ! if not 0, plot velocity field with arrow
+0             ! id for plot value 0:m, 1:vx, 2:vy, 3:vz, 4:p, 5:T, 6:nH, 7:Z
+Log Density
+
+
+5
+Log T
+
+0             ! id for plot value 0:m, 1:vx, 2:vy, 3:vz, 4:p, 5:T, 6:nH, 7:Z
+Log Density

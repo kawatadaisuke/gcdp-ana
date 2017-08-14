@@ -1,0 +1,12 @@
+1 810               ! nstep, step
+200 200             ! nx ny grid
+0                   ! flag3d: 0 slice at zsl, <0: slice at y=zsl, >0: 2D
+-0.75 0.75            ! x range (kpc)
+-0.75 0.75            ! y range (kpc)
+-0.1 0.1            ! z range (kpc)
+0.0                 ! zsl (kpc)
+0                   ! if not 0: rotation axis set to -z
+0                   ! 0: gas, 1: DM, 2: star (only gas at the moment)
+0.0158                ! smoothing length (not used for gas) (kpc)
+0                   ! if not 0, use ID range belo
+0 9000000
