@@ -397,7 +397,7 @@ program pslice
 ! nhp Msun/kpc^3
               k=6
               if(flag3d.gt.0) then
-                fval(i,j,k)=fval(i,j,k)/(zrange(1)-zrange(2))
+                fval(i,j,k)=fval(i,j,k)/(zrange(1)-zrange(0))
               endif
 ! mass weighted metallicity
               k=7

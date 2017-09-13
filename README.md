@@ -2,9 +2,17 @@
 # Analysis code for GCD+ simulation output
 
 
+# pslice
+
+ make smoothed image in the sliced plane.
+
 # lbsels
 
  select particles within the selected range of l, b and distance or around the position of input data.
+
+# smapR_Vrot
+
+ make a smoothed map for R vs. Vrot
 
 ## References:
 
