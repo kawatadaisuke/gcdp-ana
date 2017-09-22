@@ -1,0 +1,16 @@
+1 2549             !  nstep, step
+0                 ! 0: radial grid, therwise square xyz grid
+66 64 1            ! Nr,Nth,Nz (Nr, including points at R=0, and rran0 and 1, so ngrid+2, dz=(zr1-zr0)/(nz-1), Nz=ngrid+1)
+0.1 20.0         ! R range (kpc)
+-0.0 0.0         ! z range (kpc)
+1                ! if not 0, read ini/mext.dat
+1.580789376105303E-003              ! softening length (kpc)
+1                ! if not 0, rotate with angle
+225.0            ! rotation angle (deg)
+
+1                !  0: radial grid, otherwise square xyz grid
+301 301 1          ! Nx,Ny,Nz
+-15.0 15.0       ! x range (kpc)
+-15.0 15.0       ! y range (kpc)
+-1.0 1.0         ! z range (kpc)
+
