@@ -1,6 +1,6 @@
 ! /***************************************
-!   epotgrid pver 3
-!  1 Aug. 2017  written by D.Kawata
+!   epotgrid 
+!  22 Aug. 2017  written by D.Kawata
 ! ****************************************/
 
 program enez
@@ -19,13 +19,13 @@ program enez
       integer npt,ngt,nst,ndmt,ndm1t,ndm,ndm1
       integer nstep,step,is,ic
       integer nval
-      integer flagcom,flagr,flagmext,flaggp,flagrot
+      integer flagcom,flagr,flagmext,flaggp,flagrot,flagrlog
       integer ierr
 ! for z=0 grid data
       integer nr,nth,nz,ir,ith,iz,iths,ithe,ip,nthi
       integer nx,ny,ix,iy,iys,iye,nyi
       double precision rran(0:1),zran(0:1)
-      double precision lnri,lnro,dlnr,dz,dth
+      double precision lnri,lnro,dlnr,dz,dth,dr,ri,ro
       double precision thpi,zpi,rpi,potri
       double precision xran(0:1),yran(0:1)
       double precision xpi,ypi,dx,dy
@@ -52,7 +52,6 @@ program enez
       call MPI_COMM_RANK(MPI_COMM_WORLD,myrank,ierr)
       call MPI_COMM_SIZE(MPI_COMM_WORLD,nprocs,ierr)
       if(myrank.eq.0) then
-        write(6,*) ' epotgrid ver. p3 01/08/17'
         print *, "Process ",myrank, " of ", nprocs, " is alive"
       endif
       if(nprocs.gt.NCPU) then
@@ -69,7 +68,7 @@ program enez
       if(myrank.eq.0) then
         open(50,file='./ini/input.dat',status='old')
         read(50,*) nstep,step
-        read(50,*) flaggp
+        read(50,*) flaggp,flagrlog
         if(flaggp.eq.0) then
            read(50,*) nr,nth,nz
            read(50,*) rran(0),rran(1)
@@ -94,6 +93,11 @@ program enez
           write(6,*) ' radial circular grid'
           write(6,*) ' grid at z=0 nR,nth,nz=',nr,nth,nz
           write(6,*) ' R range (kpc)=',rran(0),rran(1)
+          if(flagrlog.ne.0) then
+            write(6,*) ' R grid in log scale'
+          else
+            write(6,*) ' R grid in linear scale'
+          endif
         else
           write(6,*) ' square grid'
           write(6,*) ' grid at z=0 nx,ny,nz=',nx,ny,nz
@@ -125,6 +129,7 @@ program enez
 
 ! send the data to the other node
       call MPI_BCAST(flaggp,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+      call MPI_BCAST(flagrlog,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
 
       nval=7
       allocate(tivr(0:nval-1))
@@ -292,12 +297,29 @@ program enez
 ! generate grid particle
         if(flaggp.eq.0) then
           ngpt=nr*nth*nz
-          lnri=dlog(rran(0))
-          lnro=dlog(rran(1))
-          if(nr.gt.2) then
-            dlnr=(lnro-lnri)/dble(nr-2)
-          else
+          if(flagrlog.eq.0) then
+! linear R grid
+            lnri=0.0d0
+            lnro=0.0d0
             dlnr=0.0d0
+            ri=rran(0)
+            ro=rran(1)
+            if(nr.gt.1) then
+              dr=(ro-ri)/dble(nr-1)
+            else
+              dr=0.0d0
+            endif
+          else
+            ri=0.0d0
+            ro=0.0d0
+            dr=0.0d0
+            lnri=dlog(rran(0))
+            lnro=dlog(rran(1))
+            if(nr.gt.2) then
+              dlnr=(lnro-lnri)/dble(nr-2)
+            else
+              dlnr=0.0d0
+            endif
           endif
           if(nz.gt.1) then
             dz=(zran(1)-zran(0))/dble(nz-1)
@@ -306,10 +328,16 @@ program enez
           endif
           dth=2.0d0*M_PI/dble(nth)
           if(myrank.eq.0) then
-            write(6,*) ' dlnR=ln R range /(Nr-2), grid starts from 0 and rran0'
             write(6,*) ' dz=z range /(Nz-1), grid stars from zran0'
             write(6,*) ' dth=2 Pi/Nth, grid stars from 0 deg'
-            write(6,*) ' dlnR, dth, dz=',dlnr,dth,dz
+            if(flagrlog.eq.0) then
+              write(6,*) ' dr=r range/(nr-1), grid starts from rran0'
+              write(6,*) ' dR, dth, dz=',dr,dth,dz
+            else
+              write(6,*) &
+                ' dlnR=ln R range /(Nr-2), grid starts from 0 and rran0'
+              write(6,*) ' dlnR, dth, dz=',dlnr,dth,dz
+            endif
           endif
 
           call para_range(0,nth-1,nprocs,myrank,iths,ithe)
@@ -338,12 +366,16 @@ program enez
               do ir=0,nr-1
 ! store the particle position
                 pngrid(ir,iz,ith-iths)=ip
-                if(ir.eq.0) then
-! ir=0 grid point at r=1
-                  rpi=0.0d0
+                if(flagrlog.eq.0) then
+                  rpi=ri+dble(ir)*dr
                 else
+                  if(ir.eq.0) then
+! ir=0 grid point at r=1
+                    rpi=0.0d0
+                  else
 ! ir=1 grid point at r=rran(0)
-                  rpi=dexp(lnri+dlnr*dble(ir-1))
+                    rpi=dexp(lnri+dlnr*dble(ir-1))
+                  endif
                 endif
                 xp(ip)=rpi*dcos(thpi)
                 yp(ip)=rpi*dsin(thpi)
@@ -484,9 +516,11 @@ program enez
 !        close(60)
 
         if(flaggp.eq.0) then
-          call output(step,ngp,flaggp,nr,nz,nth,nthi,rran,zran,0.0,0.0)
+          call output(step,ngp,flaggp,flagrlog &
+            ,nr,nz,nth,nthi,rran,zran,0.0,0.0)
         else
-          call output(step,ngp,flaggp,nx,nz,ny,nyi,xran,zran,yran)
+          call output(step,ngp,flaggp,flagrlog &
+            ,nx,nz,ny,nyi,xran,zran,yran)
         endif
 
       enddo
