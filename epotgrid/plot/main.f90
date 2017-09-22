@@ -71,7 +71,7 @@ program plot2dvc
         if(nstep.gt.1) then
           read(50,*) step
         endif
-        write(filen,'(a17,i6.6)') 'output/epotsqgrid',step
+        write(filen,'(a17,i6.6,a4)') 'output/epotsqgrid',step,'.dat'
         write(6,*) ' reading ',filen
 ! ****    set filename for data file   *****
         open(51,file=filen,status='old',form='unformatted')
