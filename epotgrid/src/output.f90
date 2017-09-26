@@ -227,7 +227,8 @@ subroutine output(step,ngp,flaggp,flagrlog,ng1,ng2,ng3,ng3i,ran1,ran2,ran3)
               phip=0.0d0
             endif
             phip=phip*180.0d0/M_PI
-            write(60,'(10(1pE13.5))') tdvr(i),tdvr(i+npj),tdvr(i+npj*2) &
+            write(60,'(10(1pE13.5))') tdvr(i)*LUKPC,tdvr(i+npj)*LUKPC &
+             ,tdvr(i+npj*2) &
              ,tdvr(i+npj*3),rp*LUKPC,dsqrt(-frp*rp)*VUKMS &
              ,tdvr(i+npj*4),tdvr(i+npj*5),tdvr(i+npj*6),phip
           enddo

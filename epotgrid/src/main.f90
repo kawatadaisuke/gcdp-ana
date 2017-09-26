@@ -1,6 +1,6 @@
 ! /***************************************
 !   epotgrid 
-!  22 Aug. 2017  written by D.Kawata
+!  26 Sep. 2017  written by D.Kawata
 ! ****************************************/
 
 program enez
@@ -399,12 +399,12 @@ program enez
         else
           ngpt=nx*ny*nz
           if(nx.gt.1) then
-            dx=(xran(1)-xran(0))/dble(nx-1)
+            dx=(xran(1)-xran(0))/dble(nx)
           else
             dx=0.0d0
           endif
           if(ny.gt.1) then
-            dy=(yran(1)-yran(0))/dble(ny-1)
+            dy=(yran(1)-yran(0))/dble(ny)
           else
             dy=0.0d0
           endif
@@ -435,7 +435,7 @@ program enez
           iz0=0
           ip=0
           do iy=iys,iye
-            ypi=yran(0)+dy*dble(iy)
+            ypi=yran(0)+dy*dble(iy)+0.5d0*dy
             do iz=0,nz-1
               zpi=zran(0)+dz*dble(iz)
 ! to find z=0
@@ -446,7 +446,7 @@ program enez
               do ix=0,nx-1
 ! store the particle position
                 pngrid(ix,iz,iy-iys)=ip
-                xpi=xran(0)+dx*dble(ix)
+                xpi=xran(0)+dx*dble(ix)+0.5d0*dx
                 xp(ip)=xpi
                 yp(ip)=ypi
                 zp(ip)=zpi
