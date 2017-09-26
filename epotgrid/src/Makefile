@@ -6,7 +6,7 @@ OPTIONS= -g
 # mac
 MPI_DIR = /usr/local
 #  kepler
-# MPI_DIR=/cluster/mpich2
+# MPI_DIR=/cluster/mpich_3.2
 FORT = ${MPI_DIR}/bin/mpif90
 MPI_INC = ${MPI_DIR}/include
 MPI_LIB = ${MPI_DIR}/lib
