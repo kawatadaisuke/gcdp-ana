@@ -1,0 +1,6 @@
+1 2549               ! nstep, step, if nstep=1, use step
+2                  ! 0: gas, 1: DM, 2: star
+0                  ! if 0: log scale 
+-6.0 -1.5          ! min anx max value
+-6.0 -1.5          ! min anx max value
+0                  ! if not 0: draw density contour

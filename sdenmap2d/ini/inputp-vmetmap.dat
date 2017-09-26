@@ -1,0 +1,7 @@
+1 1109             ! nstep, step
+0                 ! 0: gas, 1: DM, 2 Star
+-35.0 35.0        ! min and max for velocity
+-35.0 35.0        ! min and max for velocity
+-0.075 0.075          ! min and max for [Z]
+-6.0 -3.0           ! min and max for density
+0.0 1.0           ! min and max for density contrast

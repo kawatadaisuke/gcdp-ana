@@ -1,0 +1,17 @@
+1 2549             ! step
+450 450         ! nx, ny grid
+-15.0 15.0        ! x range (kpc)
+-15.0 15.0        ! y range (kpc)
+2               ! 0: gas, 1: DM, 2: star
+0.5            ! smoothing length
+0               ! if not 0, adjust center to COM, 1: baryon, otherwise DM
+1.0             ! rmax to search COM
+0               ! if not 0, rotate the system along x-axis by iang
+0.0            ! iang (deg)
+0              ! if not 0, use id range
+0 100000
+0               ! if not 0, select only b range
+5.0 10.0         !  gal b range
+8.0 90.0
+1
+225.0
