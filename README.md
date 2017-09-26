@@ -9,6 +9,10 @@
 
  select particles within the selected range of l, b and distance or around the position of input data.
 
+## pprof
+
+ compute density and other radial profiles. 
+
 ## pslice
 
  make smoothed image in the sliced plane.
