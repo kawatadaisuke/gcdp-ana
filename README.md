@@ -13,6 +13,9 @@
 
  make smoothed image in the sliced plane.
 
+## sdenmap2d
+
+ make smoothed images in 2D projections. 
 
 ## smapR_Vrot
 
