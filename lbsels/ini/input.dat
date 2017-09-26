@@ -1,0 +1,10 @@
+2549        ! step
+100 1       ! nskip, nskip for selected ones
+8.0 0.0 45.0    ! Rsun, zsun, angle
+-10.0 220.0 0.0   ! Vrad,V,W_sun
+0.0 360.0        ! glon range
+-90.0 90.0       ! glat range
+0.0 3.0          ! distance range (kpc)
+0.0 1.0          ! age range (Gyr)
+1                ! if not 0, read ini/axsymdiskm-fit_sels.asc and pick particles close to the data
+5.0              ! search degree radius to look for the closest particle

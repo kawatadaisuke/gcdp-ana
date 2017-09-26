@@ -31,9 +31,9 @@ program lbsels
 ! particle data
       integer nagep,nsearch
       integer,allocatable :: listagep(:),flagtaken(:)
-      double precision modp
+      double precision modp,vradxyp
       double precision,allocatable :: glonp(:),glatp(:),dxyp(:) &
-       ,d3dp(:),vglonp(:),vlosp(:),agep(:),vradgalp(:),vrotgalp(:) &
+       ,d3dp(:),vglonp(:),vglatp(:),vlosp(:),agep(:),vradgalp(:),vrotgalp(:) &
        ,rxygalp(:),phigalp(:)
 ! target star data from axsymdiskm-fit_sels.asc
 ! made with /Users/dkawata/work/obs/projs/Cepheids-kinematics/py/axsymdiskm-fit.py
@@ -215,6 +215,7 @@ program lbsels
         allocate(glonp(0:np-1))
         allocate(glatp(0:np-1))
         allocate(vglonp(0:np-1))
+        allocate(vglatp(0:np-1))
         allocate(vlosp(0:np-1))
         allocate(agep(0:np-1))
 
@@ -234,6 +235,8 @@ program lbsels
 ! velocity        
           vlosp(i)=(vx_p(i)*x_p(i)+vy_p(i)*y_p(i)+vz_p(i)*z_p(i))/d3dp(i)
           vglonp(i)=(-vx_p(i)*y_p(i)+vy_p(i)*x_p(i))/dxyp(i)
+          vradxyp=(vx_p(i)*x_p(i)+vy_p(i)*y_p(i))/dxyp(i)
+          vglatp(i)=(-vradxyp*z_p(i)+vz_p(i)*dxyp(i))/d3dp(i)
 ! rad to deg
           glonp(i)=glonp(i)*180.0d0/M_PI
           glatp(i)=glatp(i)*180.0d0/M_PI
@@ -421,10 +424,10 @@ program lbsels
 ! find particles 
             allocate(listcanp(0:ns-1))
             open(60,file='output/lbsels_targets.dat',status='unknown')
-            write(60,'(a60,a60,a16)') &
+            write(60,'(a60,a60,a34)') &
             '# Glon Glat Dxy HRV Vlon e_HRV e_Vlon Mod e_Mod Glon_t Glat_t ' &
            ,'Dxy_t HRV_t Mod_t Dmin_tp xp yp zp xt yt zt e_PMRA e_PMDEC PMR' &
-           ,'ADEC_corr logPer'
+           ,'ADEC_corr logPer Vlat Vx Vy Vz D3d'
 !            12345678901234567890123456789012345678901234567890123456789012'
 
 
@@ -483,13 +486,14 @@ program lbsels
                 flagtaken(pnts)=1
               endif
               modp=5.0d0*dlog10(d3dp(pnts)*1000.0d0)-5.0d0
-              write(60,'(26(1pE13.5))') glonp(pnts),glatp(pnts) & 
+              write(60,'(31(1pE13.5))') glonp(pnts),glatp(pnts) & 
                 ,dxyp(pnts),vlosp(pnts),vglonp(pnts),errhrvs(i),errvlons(i) &
                 ,modp,errmods(i) &
                 ,glons(i),glats(i),distxys(i),hrvs(i),vlons(i),mods(i) &
                 ,disptsmin,x_p(pnts),y_p(pnts),z_p(pnts),xts(i),yts(i),zts(i) &
                 ,errpmras(i),errpmdecs(i) &
-                ,pmradec_corrs(i),logps(i)
+                ,pmradec_corrs(i),logps(i) &
+                ,vglatp(pnts),vx_p(pnts),vy_p(pnts),vz_p(pnts),d3dp(pnts)
             enddo
 
 ! deallocate
@@ -518,6 +522,7 @@ program lbsels
         deallocate(d3dp)    
         deallocate(dxyp)    
         deallocate(vglonp)    
+        deallocate(vglatp)    
         deallocate(vlosp)
         deallocate(agep)
         deallocate(vradgalp)
