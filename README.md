@@ -1,16 +1,20 @@
 
 # Analysis code for GCD+ simulation output
 
+## epotgrid
 
-# pslice
+ compute potential, Vcirc and etc. at different grid positions. 
 
- make smoothed image in the sliced plane.
-
-# lbsels
+## lbsels
 
  select particles within the selected range of l, b and distance or around the position of input data.
 
-# smapR_Vrot
+## pslice
+
+ make smoothed image in the sliced plane.
+
+
+## smapR_Vrot
 
  make a smoothed map for R vs. Vrot
 
