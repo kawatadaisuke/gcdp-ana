@@ -217,12 +217,12 @@ program prof
         do idc=0,nidc-1
 
 ! for selected stars
-            open(61,file='selectedtar.dat',status='unknown')
+            open(61,file='selectedtar.asc',status='unknown')
 
 ! open output file
           if(myrank.eq.0) then
             write(filename,'(a11,i1,a1,i6.6,a4)') 'output/prof',idc &
-             ,'-',step,'.dat'
+             ,'-',step,'.asc'
             open(60,file=filename,status='unknown')
 !                                   1234567890123456
             write(60,'(a16,3I10)') '# idspc,idrange=',idspc(idc) &
@@ -232,7 +232,7 @@ program prof
               ,ntheta,thetast,thetaen*180.0d0/M_PI
 !                              1234567890123456789012345678901234567890123
             write(60,'(a43,a28)') &
-               '# R(100 kpc), Den R(kpc), sigR, sigth, sigz' &
+               '# R(100 kpc) Den R(kpc) sigR sigth sigz' &
               ,' Vth z1/2 Rh Mr AMR theta Np'
           endif
 
