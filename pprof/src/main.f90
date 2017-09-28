@@ -230,8 +230,8 @@ program prof
 !                                            123456789012345678901234567890
             write(60,'(a21,I5,2(1pE13.5))') '# ntheta,thetast,end=' &
               ,ntheta,thetast,thetaen*180.0d0/M_PI
-!                              1234567890123456789012345678901234567890123
-            write(60,'(a43,a28)') &
+            write(60,'(a39,a28)') &
+!               1234567890123456789012345678901234567890123
                '# R(100 kpc) Den R(kpc) sigR sigth sigz' &
               ,' Vth z1/2 Rh Mr AMR theta Np'
           endif
