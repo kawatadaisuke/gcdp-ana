@@ -6,7 +6,7 @@ OPTIONS= -frecord-marker=4 -g
 # mac
 MPI_DIR = /usr/local
 #  kepler
-# MPI_DIR=/cluster/mpich_2.3
+# MPI_DIR=/cluster/mpich_3.2
 FORT = ${MPI_DIR}/bin/mpif90
 MPI_INC = ${MPI_DIR}/include
 MPI_LIB = ${MPI_DIR}/lib

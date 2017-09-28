@@ -1,6 +1,8 @@
-1 1622                   ! nstep, step
-20                     ! ndr
-0.0 0.035                ! radial range (100 kpc)
+1 2549                   ! nstep, step
+1                       ! ndr
+0.05 0.11                ! radial range (100 kpc)
+8                      ! ntheta
+0.0 360.0               ! theta range (deg)
 1                      ! number of components to analyse profile
 2                      ! 0: gas, 1: DM, 2: star
 0 9000000                 ! id range
