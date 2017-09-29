@@ -35,6 +35,9 @@ program lbsels
       double precision,allocatable :: glonp(:),glatp(:),dxyp(:) &
        ,d3dp(:),vglonp(:),vglatp(:),vlosp(:),agep(:),vradgalp(:),vrotgalp(:) &
        ,rxygalp(:),phigalp(:)
+      double precision vrmselp,vtmselp,vzmselp,vr2mselp,vt2mselp,vz2mselp &
+       ,mtotselp
+      double precision vrsig,vtsig,vzsig
 ! target star data from axsymdiskm-fit_sels.asc
 ! made with /Users/dkawata/work/obs/projs/Cepheids-kinematics/py/axsymdiskm-fit.py
       integer ntargs,pnts
@@ -281,6 +284,13 @@ program lbsels
  161       format(16(1pE13.5))
           enddo
           close(60)
+          mtotselp=0.0d0
+          vrmselp=0.0d0
+          vtmselp=0.0d0
+          vzmselp=0.0d0
+          vr2mselp=0.0d0
+          vt2mselp=0.0d0
+          vz2mselp=0.0d0
           open(60,file='output/lbsels.dat',status='unknown')
           write(60,'(a7,I10)') '# step=',step 
           write(60,'(a30,1pE13.5,a1,1pE13.5,a2,1pE13.5)') &
@@ -308,12 +318,40 @@ program lbsels
               write(60,161) x_p(pn),y_p(pn),z_p(pn),vx_p(pn),vy_p(pn),vz_p(pn) &
                 ,glonp(pn),glatp(pn),d3dp(pn),vglonp(pn),vlosp(pn),agep(pn) &
                 ,rxygalp(pn),vradgalp(pn),vrotgalp(pn),phigalp(pn)
+              mtotselp=mtotselp+m_p(pn)
+              vrmselp=vrmselp+vradgalp(pn)*m_p(pn)
+              vtmselp=vtmselp+vrotgalp(pn)*m_p(pn)
+              vzmselp=vzmselp+vz_p(pn)*m_p(pn)
+              vr2mselp=vr2mselp+(vradgalp(pn)**2)*m_p(pn)
+              vt2mselp=vt2mselp+(vrotgalp(pn)**2)*m_p(pn)
+              vz2mselp=vz2mselp+(vz_p(pn)**2)*m_p(pn)
             endif
             endif
             endif
             endif    
           enddo
           close(60)
+          if(mtotselp.gt.0.0d0) then
+            vrmselp=vrmselp/mtotselp
+            vtmselp=vtmselp/mtotselp
+            vzmselp=vzmselp/mtotselp           
+            vr2mselp=vr2mselp/mtotselp
+            vt2mselp=vt2mselp/mtotselp
+            vz2mselp=vz2mselp/mtotselp           
+          endif
+          if(myrank.eq.0) then
+            open(61,file='output/lbsels-vmvsig.asc',status='unknown')     
+            write(6,*) ' Mean velocity rad, th, z=',vrmselp,vtmselp,vzmselp
+            vrsig=dsqrt(vr2mselp-vrmselp**2)
+            vtsig=dsqrt(vt2mselp-vtmselp**2)
+            vzsig=dsqrt(vz2mselp-vzmselp**2) 
+            write(6,*) ' vsig rad, th, z=',vrsig,vtsig,vzsig
+!                              12345678901234567890123456789012345
+            write(61,'(a35)') '# Vradm Vthm Vzm vrsig vthsig vzsig'
+            write(61,'(6(1pE13.5))') vrmselp,vtmselp,vzmselp &
+             ,vrsig,vtsig,vzsig
+            close(61)
+          endif
 
 ! read target star files
           if(flagtargetf.ne.0) then
