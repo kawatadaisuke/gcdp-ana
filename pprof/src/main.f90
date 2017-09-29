@@ -230,10 +230,10 @@ program prof
 !                                            123456789012345678901234567890
             write(60,'(a21,I5,2(1pE13.5))') '# ntheta,thetast,end=' &
               ,ntheta,thetast,thetaen*180.0d0/M_PI
-            write(60,'(a39,a28)') &
+            write(60,'(a39,a34)') &
 !               1234567890123456789012345678901234567890123
                '# R(100 kpc) Den R(kpc) sigR sigth sigz' &
-              ,' Vth z1/2 Rh Mr AMR theta Np'
+              ,' Vth z1/2 Rh Mr AMR theta VR Vz Np'
           endif
 
           thetamin=0.0d0
@@ -557,8 +557,8 @@ program prof
                  ,rdmr*LUKPC,vrsig*VUKMS,vtsig*VUKMS,vzsig*VUKMS &
                  ,vtm(i)*VUKMS,zhsig*LUKPC &
                  ,(rdmr+0.5d0*dr)*LUKPC,mtr(i),amtr(i),thetagrid*180.0d0/M_PI &
-                 ,npm(i)
- 160            format(12(1pE13.5),I10)
+                 ,vrm(i)*VUKMS,vzm(i)*VUKMS,npm(i)
+ 160            format(14(1pE13.5),I10)
               enddo
             endif
           enddo
