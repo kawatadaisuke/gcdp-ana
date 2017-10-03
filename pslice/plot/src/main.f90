@@ -1,6 +1,6 @@
 !
 !   main.f90 for plot_slval
-! 14 Aug. 2017      written by D. Kawata
+! 13 Sep. 2017      written by D. Kawata
 !
 
 program plot_slval
@@ -12,7 +12,7 @@ program plot_slval
       integer,parameter :: nyp=1
       double precision,parameter :: VUKMS=207.4d0
 ! *** for work ***
-      integer i,j,k,ctype,ip,ixp,iyp,flaglog,flagv,ipval
+      integer i,j,k,ctype,ip,ixp,iyp,flaglog,flagv,ipval,ir
       integer step
       integer maxi,maxj,mini,minj
       integer flagsp
@@ -31,14 +31,15 @@ program plot_slval
       real chdef
 ! *** for mesh data ***
       double precision txp,typ,tzp,tfdp
-      double precision,allocatable :: xm(:,:),ym(:,:)
       double precision,allocatable :: fdval(:,:,:)
       double precision drtmp(4)
       real alev(1)
       real,allocatable :: fp(:,:)
-! for star data
-      integer nsp
-      real,allocatable :: xsp(:),ysp(:),zsp(:),rxysp(:),vrotsp(:),agesp(:)
+      double precision rgp,vrotgp,vxvrotgp,vyvrotgp,xgp,ygp
+! ini/vprof.dat
+      integer nrdp
+      double precision,allocatable :: rmdp(:),vrotmdp(:)
+      double precision dtmp(9)
 ! for viewpoint
       real rxvp(2),ryvp(2),dxvp,dyvp
       real xlvp(nxp),xhvp(nxp),ylvp(nyp),yhvp(nyp)
@@ -54,7 +55,7 @@ program plot_slval
       chdef=1.5
       lwdef=3
 !  plot type, 1: gray scale, 2: rainbow
-      ctype=2
+      ctype=3
       
 ! *** open input file ****
       open(50,file='ini/input-plot_slval.dat',status='old')
@@ -86,6 +87,20 @@ program plot_slval
       write(6,*) ' image max and min range =',fmaxv,fminv
       if(flagv.ne.0) then
         write(6,*) ' with velocity arrows'
+        if(flagv.lt.0) then
+          nrdp=-flagv
+          write(6,*) ' velocity field w.r.t. mean velocity reading from ini/vprof.dat. N data=',nrdp
+! allocate
+          allocate(rmdp(nrdp))
+          allocate(vrotmdp(nrdp))
+          open(50,file='ini/vprof.dat',status='old')
+          do i=1,nrdp
+            read(50,'(11(1pE13.5))') rmdp(i),dtmp(1),dtmp(2),dtmp(3),dtmp(4) &
+             ,dtmp(5),vrotmdp(i),dtmp(6),dtmp(7),dtmp(8),dtmp(9)
+            rmdp(i)=rmdp(i)*100.0d0
+          enddo
+          close(50)
+        endif
       endif
       write(6,*) ' label=',wlab
 
@@ -142,8 +157,6 @@ program plot_slval
         write(6,*) ' hmp=',hmp
         write(6,*) ' flagid,ids,ide=',flagid,ids,ide
 
-        allocate(xm(nx,ny))
-        allocate(ym(nx,ny))
         allocate(fdval(nx,ny,nval))
         allocate(fp(nx,ny))
 
@@ -247,7 +260,7 @@ program plot_slval
 
 ! *** dwarf the velocity field ***
         if(flagv.ne.0) then
-          nskipa = 5
+          nskipa = 10
 ! work for +-2 kpc
           vdx = real(dx)*3.0
           write(6,*) ' vdx=',vdx
@@ -259,9 +272,39 @@ program plot_slval
             do j=nskipa,ny-1,nskipa
               xar(1) = xl+real(dx)*(real(i)-0.5)
               yar(1) = yl+real(dy)*(real(j)-0.5)
+              if(flagv.lt.0) then
+! subtract the rotation velocity
+                xgp=dble(xar(1))
+                ygp=dble(yar(1))
+                rgp=dsqrt(xgp**2+ygp**2)
+! get mean rotation veclocity 
+                do ir=1,nrdp
+                  if(rmdp(ir).gt.rgp) then
+                    goto 70
+                  endif
+                enddo
+                write(6,*) ' Error finding mean rotation data.'
+                write(6,*) ' ir,x,y,r=',ir,xgp,ygp,rgp
+                stop
+ 70             if(ir.eq.1) then
+                  vrotgp=vrotmdp(ir)*rgp/rmdp(1)
+                else 
+                  vrotgp=vrotmdp(ir-1)+(vrotmdp(ir)-vrotmdp(ir-1)) &
+                        *(rgp-rmdp(ir-1))/(rmdp(ir)-rmdp(ir-1))
+                endif
+                vrotgp=vrotgp+5.0
+! vx, vy from rotation
+                vxvrotgp=vrotgp*ygp/rgp
+                vyvrotgp=-vrotgp*xgp/rgp
+! subtract 
+                fdval(i,j,2)=fdval(i,j,2)-vxvrotgp/VUKMS
+                fdval(i,j,3)=fdval(i,j,3)-vyvrotgp/VUKMS
+              endif
 ! 5 pixel / 100 km/s
               xar(2) = xar(1)+real(fdval(i,j,2)*VUKMS/50.0d0)*vdx
               yar(2) = yar(1)+real(fdval(i,j,3)*VUKMS/50.0d0)*vdx
+!              xar(2) = xar(1)+real(fdval(i,j,2)*VUKMS/25.0d0)*vdx
+!              yar(2) = yar(1)+real(fdval(i,j,3)*VUKMS/25.0d0)*vdx
 ! vrot
               rxyp=sqrt(xar(1)**2+yar(1)**2)
               call pgsci(0)
@@ -299,8 +342,6 @@ program plot_slval
 !      call pgwedg('RI',0.,4.,fmin,fmax,'N\s\u') 
        call pgwedg('RI',0.,3.,fmin,fmax,wlab) 
 
-        deallocate(xm)
-        deallocate(ym)
         deallocate(fdval)
         deallocate(fp)
 
