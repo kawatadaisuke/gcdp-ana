@@ -1,0 +1,9 @@
+1 2549   ! nstep, step, if nstep>1, read ini/file.dat, otherwise use step
+1          ! 0: simple output
+10          ! nskip for output particles
+1           ! if 0: output comoving position
+1           ! if 0: output only for high-reso DM with binary
+0           ! if 1: output TESTP info.
+
+
+ input.dat for pver.1

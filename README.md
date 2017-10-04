@@ -23,7 +23,15 @@
 
 ## smapR_Vrot
 
- make a smoothed map for R vs. Vrot
+ make a smoothed map for R vs. Vrot.
+
+## bin2asc 
+ 
+ convert binary output to ascii data.
+
+## Note:
+ 
+ rdata.f90 is most updated in binasc/src, including tadd_dm.
 
 ## References:
 
