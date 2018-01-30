@@ -1,0 +1,8 @@
+0           ! ngas
+abc
+0           ! ndm
+abc
+100000         ! nstar
+../../../Baba/MilkyWayStarsOffset090FileID2621.dat.txt
+2.62         ! time (Gyr)
+100         ! step number for output

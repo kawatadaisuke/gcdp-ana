@@ -25,6 +25,10 @@
 
  make a smoothed map for R vs. Vrot.
 
+## asc2bin
+
+ convert ascii output to GCD+ binary data.
+
 ## bin2asc 
  
  convert binary output to ascii data.
