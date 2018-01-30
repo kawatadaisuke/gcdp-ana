@@ -80,7 +80,7 @@ program asc2bin
           vz_p(i)=vz_p(i)/VUKMS
           mzZ_p(i)=mzZ_p(i)*m_p(i)
           ts_p(i)=(tu-ts_p(i))/TMUGYR
-          m_p(i)=m_p(i)/TMUGYR
+          m_p(i)=m_p(i)/MUSM
           id_p(i)=i
           list_ap(i)=i
           flagc_p(i)=1
