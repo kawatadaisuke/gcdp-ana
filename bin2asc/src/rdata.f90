@@ -56,8 +56,8 @@ subroutine rdata(step,ngt,ng,ndmt,ndm,ndm1t,ndm1,nst,ns &
  70   flagf=0
       if(myrank.eq.0) then
         write(filei,'(a21,i6.6,a1,i4.4)') '../output/data/bdvals',step,'n',ifn
-        write(6,*) ' reading ',filei
         open(50,file=filei,status='old',form='unformatted',err=90)
+        write(6,*) ' reading ',filei
         read(50) npt,ndmt,ndm1t,ai,tn
         read(50) nprocr,nof,invali,invald
         if(ifn.eq.0) then
@@ -561,6 +561,8 @@ subroutine rdata(step,ngt,ng,ndmt,ndm,ndm1t,ndm1,nst,ns &
         open(54,file=filei,status='old',form='unformatted',err=96)
         read(54) npt,ndmt,ndm1t,ai,tn
         read(54) nprocr,nof,ndbsf
+
+        write(6,*) ' ndbhyd,ndbmet,ndbsf=',ndbhyd,ndbmet,ndbsf
 
       else
         ndbhyd=0
