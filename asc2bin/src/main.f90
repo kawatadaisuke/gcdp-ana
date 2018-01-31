@@ -46,12 +46,14 @@ program asc2bin
       write(6,*) ' time=',tu
       write(6,*) ' step name=',step
       write(6,*) ' ng,ndm,ns=',ngt,ndmt,nst
+      if(ngt.gt.0) then
+        write(6,*) ' read gas data =',fileg
+      endif
       if(nst.gt.0) then
         write(6,*) ' read star data =',files
       endif
 
-! *** this version only for star particles ***
-      ngt=0
+! *** this version only for gas and star particles ***
       ndmt=0
 
       ng=ngt
@@ -64,30 +66,61 @@ program asc2bin
       call allocate_baryon(np) 
 
 ! *** read the data ***
-      if(nst.gt.0) then
-        open(50,file=files,status='old')
+      np=0
+      if(ngt.gt.0) then
+        open(50,file=fileg,status='old')
         ! if there is a header
-        read(50,*)
-        do i=0,ns-1
-          read(50,*) x_p(i),y_p(i),z_p(i),vx_p(i),vy_p(i),vz_p(i) &
-            ,mzZ_p(i),ts_p(i),m_p(i)
+        do i=0,ngt-1
+          read(50,*) x_p(np),y_p(np),z_p(np),vx_p(np),vy_p(np),vz_p(np) &
+            ,mzZ_p(np),m_p(np)
           ! convert unit
-          x_p(i)=x_p(i)/LUKPC
-          y_p(i)=y_p(i)/LUKPC
-          z_p(i)=z_p(i)/LUKPC
-          vx_p(i)=vx_p(i)/VUKMS
-          vy_p(i)=vy_p(i)/VUKMS
-          vz_p(i)=vz_p(i)/VUKMS
-          mzZ_p(i)=mzZ_p(i)*m_p(i)
-          ts_p(i)=(tu-ts_p(i))/TMUGYR
-          m_p(i)=m_p(i)/MUSM
-          id_p(i)=i
-          list_ap(i)=i
-          flagc_p(i)=1
-          rho_p(i)=1.0d0
-          u_p(i)=1.0d0
+          x_p(np)=x_p(np)/LUKPC
+          y_p(np)=y_p(np)/LUKPC
+          z_p(np)=z_p(np)/LUKPC
+          vx_p(np)=vx_p(np)/VUKMS
+          vy_p(np)=vy_p(np)/VUKMS
+          vz_p(np)=vz_p(np)/VUKMS
+          mzZ_p(np)=mzZ_p(np)*m_p(np)
+          ts_p(np)=0.0d0
+          m_p(np)=m_p(np)/MUSM
+          id_p(np)=np
+          list_ap(np)=np
+          flagc_p(np)=-1
+          rho_p(np)=1.0d0
+          u_p(np)=1.0d0
+          np=np+1
         enddo
         close(50)
+      endif
+      if(nst.gt.0) then
+        open(50,file=files,status='old')
+        do i=0,ns-1
+          read(50,*) x_p(np),y_p(np),z_p(np),vx_p(np),vy_p(np),vz_p(np) &
+            ,mzZ_p(np),ts_p(np),m_p(np)
+          ! convert unit
+          x_p(np)=x_p(np)/LUKPC
+          y_p(np)=y_p(np)/LUKPC
+          z_p(np)=z_p(np)/LUKPC
+          vx_p(np)=vx_p(np)/VUKMS
+          vy_p(np)=vy_p(np)/VUKMS
+          vz_p(np)=vz_p(np)/VUKMS
+          mzZ_p(np)=mzZ_p(np)*m_p(np)
+          ts_p(np)=(tu-ts_p(np))/TMUGYR
+          m_p(np)=m_p(np)/MUSM
+          id_p(np)=np
+          list_ap(np)=np
+          flagc_p(np)=1
+          rho_p(np)=1.0d0
+          u_p(np)=1.0d0
+          np=np+1
+        enddo
+        close(50)
+      endif
+
+      if(np.ne.npt) then
+        write(6,*) ' Error in reading baryon data. npt and np are inconsistent.'
+        write(6,*) ' npt, np=',npt,np
+        stop
       endif
 
       ! convert tu
@@ -97,6 +130,7 @@ program asc2bin
       myrank=0
       write(fileo,'(a15,i6.6,a1,i4.4)') &
         './output/bbvals',step,'n',myrank
+
       open(61,file=fileo,status='unknown',form='unformatted')
       write(61) npt,ndmt,ndmt,ai,tu
       write(61) 1,1,nivalb,ndbval
