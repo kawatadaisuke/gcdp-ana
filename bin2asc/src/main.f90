@@ -100,7 +100,7 @@ program bin2asc
       flagout=tivr(6)
       deallocate(tivr)
 
-      call MPI_BCAST(tdvr,nval,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
+      ! call MPI_BCAST(tdvr,nval,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
 
       if(nstep.gt.1.and.myrank.eq.0) then
         open(49,file='./ini/file.dat',status='old')

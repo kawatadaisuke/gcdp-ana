@@ -19,6 +19,7 @@ program asc2bin
       integer nivalb,ndbval,ndbhyd,ndbmet,ndbsf
 ! *** Time, redshift, back ground density ***
       double precision tu,zu,ai
+      double precision hp
 ! ***  for filename ***
       character fileg*60,filedm*60,files*60,fileo*60
 
@@ -32,6 +33,7 @@ program asc2bin
       read(50,'(a60)') files
 
       read(50,*) tu
+      read(50,*) hp
       read(50,*) step
       close(50)
 
@@ -39,7 +41,7 @@ program asc2bin
       ai=1.0
       nivalb=3
       ndbval=9
-      ndbhyd=0
+      ndbhyd=1
       ndbmet=0
       ndbsf=1
 
@@ -52,6 +54,7 @@ program asc2bin
       if(nst.gt.0) then
         write(6,*) ' read star data =',files
       endif
+      write(6,*) ' set softening (100 kpc)=',hp
 
 ! *** this version only for gas and star particles ***
       ndmt=0
@@ -88,6 +91,7 @@ program asc2bin
           flagc_p(np)=-1
           rho_p(np)=1.0d0
           u_p(np)=1.0d0
+          h_p(np)=hp
           np=np+1
         enddo
         close(50)
@@ -112,6 +116,7 @@ program asc2bin
           flagc_p(np)=1
           rho_p(np)=1.0d0
           u_p(np)=1.0d0
+          h_p(np)=hp
           np=np+1
         enddo
         close(50)
@@ -154,6 +159,7 @@ program asc2bin
       open(61,file=fileo,status='unknown',form='unformatted')
       write(61) npt,ndmt,ndmt,ai,tu
       write(61) 1,1,ndbhyd
+      write(61) h_p
       close(61)       
       write(fileo,'(a15,i6.6,a1,i4.4)') &
         './output/bbmets',step,'n',myrank
