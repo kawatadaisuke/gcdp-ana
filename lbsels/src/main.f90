@@ -1,6 +1,6 @@
 ! /***************************************
 !   lbsels ver.2
-!  14 Aug. 2017  written by D.Kawata
+!  31 Jan. 2018  written by D.Kawata
 ! ****************************************/
 
 program lbsels
@@ -23,14 +23,16 @@ program lbsels
 ! *** Time, redshift, back ground density ***
       double precision tu,zu,ai
 ! for output
-      integer nskip,nskipsel
+      integer nskip,nsel,nselout,nselfin
 ! solar position and velocity
       double precision rzasun(0:2),xsun(0:1),vsun(0:2)
 ! l, b and distance range and age range 
       double precision glonran(0:1),glatran(0:1),dran(0:1),ageran(0:1)
+      double precision zran(0:1)
 ! particle data
       integer nagep,nsearch
-      integer,allocatable :: listagep(:),flagtaken(:)
+      integer,allocatable :: listagep(:),flagtaken(:),listsel(:) &
+        ,listselfin(:)
       double precision modp,vradxyp
       double precision,allocatable :: glonp(:),glatp(:),dxyp(:) &
        ,d3dp(:),vglonp(:),vglatp(:),vlosp(:),agep(:),vradgalp(:),vrotgalp(:) &
@@ -38,6 +40,9 @@ program lbsels
       double precision vrmselp,vtmselp,vzmselp,vr2mselp,vt2mselp,vz2mselp &
        ,mtotselp
       double precision vrsig,vtsig,vzsig
+! for random pick up
+      integer jsel
+      double precision rsel,xsel,ysel,dminsel,thsel,dsel
 ! target star data from axsymdiskm-fit_sels.asc
 ! made with /Users/dkawata/work/obs/projs/Cepheids-kinematics/py/axsymdiskm-fit.py
       integer ntargs,pnts
@@ -56,13 +61,17 @@ program lbsels
       integer,allocatable :: tivr(:),tivs(:)
       double precision,allocatable :: tdvr(:),tdvs(:)
       double precision,allocatable :: tx(:),ty(:)
+! external
+      integer idum
+      real ran1
+      external ran1
 
 ! ***** MPI Initialization *****
       call MPI_INIT(ierr)
       call MPI_COMM_RANK(MPI_COMM_WORLD,myrank,ierr)
       call MPI_COMM_SIZE(MPI_COMM_WORLD,nprocs,ierr)
       if(myrank.eq.0) then
-        write(6,*) ' lbsels ver. p2 14/08/17'
+        write(6,*) ' lbsels'
         print *, "Process ",myrank, " of ", nprocs, " is alive"
       endif
       if(nprocs.gt.NCPU) then
@@ -73,11 +82,13 @@ program lbsels
         stop
       endif
 
+      idum=-194020
+
 ! *****   Open Input File   ******
       if(myrank.eq.0) then
         open(50,file='./ini/input.dat',status='old')
         read(50,*) step
-        read(50,*) nskip,nskipsel
+        read(50,*) nskip,nselout
 ! solar position R, z, angle for Position of Sun (degree) 
 !   from (x,y) = (-rzasun(0),0) anti-clockwise ***/
         read(50,*) rzasun(0),rzasun(1),rzasun(2)
@@ -86,17 +97,22 @@ program lbsels
         read(50,*) glonran(0),glonran(1)
         read(50,*) glatran(0),glatran(1)
         read(50,*) dran(0),dran(1)
+        read(50,*) zran(0),zran(1)
         read(50,*) ageran(0),ageran(1)
         read(50,*) flagtargetf
         read(50,*) degrange
         close(50)
         write(6,*) ' step=',step 
-        write(6,*) ' output nskip for lb*.dat and lbsel?.dat=',nskip,nskipsel
+        write(6,*) ' output nskip for lb*.dat=',nskip
+        if(nselout.gt.0) then
+          write(6,*) ' only output selected particles np<',nselout
+        endif
         write(6,*) ' Solar position angle from (-',rzasun(0),',',rzasun(1) &
           ,')=',rzasun(2)
         write(6,*) ' Solar motion Vrad,V,W=',vsun(0),vsun(1),vsun(2)
         write(6,*) ' selection l range min,max =',glonran(0),glonran(1)
         write(6,*) '           b range min,max =',glatran(0),glatran(1)
+        write(6,*) '           z range min,max =',zran(0),zran(1)
         write(6,*) '    distance range min,max =',dran(0),dran(1)
         write(6,*) ' for star age range=',ageran(0),ageran(1)
         if(flagtargetf.ne.0) then
@@ -110,17 +126,17 @@ program lbsels
       if(myrank.eq.0) then
         tivr(0)=step
         tivr(1)=nskip
-        tivr(2)=nskipsel
+        tivr(2)=nselout
         tivr(3)=flagtargetf
       endif
       call MPI_BCAST(tivr,nval,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       step=tivr(0)
       nskip=tivr(1)
-      nskipsel=tivr(2)
+      nselout=tivr(2)
       flagtargetf=tivr(3)
       deallocate(tivr)
 
-      nval=15
+      nval=17
       allocate(tdvr(0:nval-1))
       if(myrank.eq.0) then
         tdvr(0)=rzasun(0)
@@ -138,6 +154,8 @@ program lbsels
         tdvr(12)=ageran(0)
         tdvr(13)=ageran(1)
         tdvr(14)=degrange
+        tdvr(15)=zran(0)
+        tdvr(16)=zran(1)
       endif
       call MPI_BCAST(tdvr,nval,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
       rzasun(0)=tdvr(0)
@@ -155,6 +173,8 @@ program lbsels
       ageran(0)=tdvr(12)
       ageran(1)=tdvr(13)
       degrange=tdvr(14)
+      zran(0)=tdvr(15)
+      zran(1)=tdvr(16)
       deallocate(tdvr)
 
 ! solar angle deg -> radian
@@ -258,20 +278,80 @@ program lbsels
  160       format(15(1pE13.5))
           enddo
           close(60)
-          open(60,file='output/lbselg.dat',status='unknown')
-          do i=0,ng-1,nskipsel
+
+          allocate(listsel(0:ng-1))
+          allocate(listselfin(0:ng-1))
+          nsel=0
+          ! selecting the particle in the region
+          do i=0,ng-1
             pn=list_ap(i)
             if(glonp(pn).ge.glonran(0).and.glonp(pn).le.glonran(1)) then
             if(glatp(pn).ge.glatran(0).and.glatp(pn).le.glatran(1)) then
             if(d3dp(pn).ge.dran(0).and.d3dp(pn).le.dran(1)) then
-              write(60,160) x_p(pn),y_p(pn),z_p(pn),vx_p(pn),vy_p(pn),vz_p(pn) &
-                ,glonp(pn),glatp(pn),d3dp(pn),vglonp(pn),vlosp(pn) &
-                ,rxygalp(pn),vradgalp(pn),vrotgalp(pn),phigalp(pn)
+              listsel(nsel)=pn
+              nsel=nsel+1
             endif
             endif
             endif    
           enddo
+          write(6,*) ' lbselg nsel=',nsel
+          if(nselout.eq.0.or.nselout.gt.nsel) then
+            nselfin=nsel
+            do i=0,nsel-1
+              pn=listsel(i)
+              listselfin(i)=pn
+            enddo
+          else
+            nselfin=nselout
+            allocate(flagtaken(0:nsel-1))
+            do i=0,nsel-1
+              flagtaken(i)=0
+            enddo
+            ! open(62,file='selpos.asc',status='unknown')
+            do i=0,nselout-1
+              rsel=dsqrt(dble(ran1(idum)))*dran(1)
+              thsel=2.0*M_PI*dble(ran1(idum))
+              xsel=rsel*dcos(thsel)
+              ysel=rsel*dsin(thsel)
+              ! write(62,'(4(1pE13.5))') xsel,ysel,rsel,thsel
+              dminsel=INF
+              jsel=-1
+              do j=0,nsel-1
+                pn=listsel(j)
+                if(flagtaken(j).eq.0) then
+                  if(dabs(x_p(pn)-xsel).lt.dminsel &
+                    .and.dabs(y_p(pn)-ysel).lt.dminsel) then
+                    dsel=dsqrt((x_p(pn)-xsel)**2+(y_p(pn)-ysel)**2)
+                    if(dsel.lt.dminsel) then
+                      dminsel=dsel
+                      jsel=j
+                    endif
+                  endif
+                endif
+              enddo 
+              if(jsel.lt.0) then
+                write(6,*) ' Error: no gas particle found for random selection'
+                write(6,*) i,' around x,y,dminsel=',xsel,ysel,dminsel
+                stop
+              endif
+              flagtaken(jsel)=1
+              pn=listsel(jsel)
+              listselfin(i)=pn
+            enddo
+            deallocate(flagtaken)
+            ! close(62)
+          endif
+          !output
+          open(60,file='output/lbselg.dat',status='unknown')
+          do i=0,nselfin-1
+            pn=listselfin(i)
+            write(60,160) x_p(pn),y_p(pn),z_p(pn),vx_p(pn),vy_p(pn) & 
+             ,vz_p(pn),glonp(pn),glatp(pn),d3dp(pn),vglonp(pn),vlosp(pn) &
+             ,rxygalp(pn),vradgalp(pn),vrotgalp(pn),phigalp(pn)
+          enddo
           close(60)
+          deallocate(listsel)  
+          deallocate(listselfin)  
         endif
 ! for star
         if(ns.gt.0) then
@@ -284,6 +364,74 @@ program lbsels
  161       format(16(1pE13.5))
           enddo
           close(60)
+
+          allocate(listsel(0:ns-1))
+          allocate(listselfin(0:ns-1))
+          nsel=0
+          ! selecting the particle in the region
+          do i=ng,np-1
+            pn=list_ap(i)
+            if(glonp(pn).ge.glonran(0).and.glonp(pn).le.glonran(1)) then
+            if(glatp(pn).ge.glatran(0).and.glatp(pn).le.glatran(1)) then
+            if(d3dp(pn).ge.dran(0).and.d3dp(pn).le.dran(1)) then
+            if(z_p(pn).ge.zran(0).and.z_p(pn).le.zran(1)) then
+            if(agep(pn).ge.ageran(0).and.agep(pn).le.ageran(1)) then
+              listsel(nsel)=pn
+              nsel=nsel+1
+            endif
+            endif
+            endif
+            endif
+            endif    
+          enddo
+          write(6,*) ' lbsels nsel=',nsel
+          if(nselout.eq.0.or.nselout.gt.nsel) then
+            nselfin=nsel
+            do i=0,nsel-1
+              pn=listsel(i)
+              listselfin(i)=pn
+            enddo
+          else
+            nselfin=nselout
+            allocate(flagtaken(0:nsel-1))
+            do i=0,nsel-1
+              flagtaken(i)=0
+            enddo
+            ! open(62,file='selpos.asc',status='unknown')
+            do i=0,nselout-1
+              rsel=dsqrt(dble(ran1(idum)))*dran(1)
+              thsel=2.0*M_PI*dble(ran1(idum))
+              xsel=rsel*dcos(thsel)
+              ysel=rsel*dsin(thsel)
+              ! write(62,'(4(1pE13.5))') xsel,ysel,rsel,thsel
+              dminsel=INF
+              jsel=-1
+              do j=0,nsel-1
+                pn=listsel(j)
+                if(flagtaken(j).eq.0) then
+                  if(dabs(x_p(pn)-xsel).lt.dminsel &
+                    .and.dabs(y_p(pn)-ysel).lt.dminsel) then
+                    dsel=dsqrt((x_p(pn)-xsel)**2+(y_p(pn)-ysel)**2)
+                    if(dsel.lt.dminsel) then
+                      dminsel=dsel
+                      jsel=j
+                    endif
+                  endif
+                endif
+              enddo 
+              if(jsel.lt.0) then
+                write(6,*) ' Error: no star particle found for random selection'
+                write(6,*) i,' around x,y,dminsel=',xsel,ysel,dminsel
+                stop
+              endif
+              flagtaken(jsel)=1
+              pn=listsel(jsel)
+              listselfin(i)=pn
+            enddo
+            deallocate(flagtaken)
+            ! close(62)
+          endif
+          !output
           mtotselp=0.0d0
           vrmselp=0.0d0
           vtmselp=0.0d0
@@ -309,26 +457,21 @@ program lbsels
             ,glatran(0),glatran(1)
           write(60,'(a30,2(1pE13.5))') '#        for star age range =' &
             ,ageran(0),ageran(1)
-          do i=ng,np-1,nskipsel
-            pn=list_ap(i)
-            if(glonp(pn).ge.glonran(0).and.glonp(pn).le.glonran(1)) then
-            if(glatp(pn).ge.glatran(0).and.glatp(pn).le.glatran(1)) then
-            if(d3dp(pn).ge.dran(0).and.d3dp(pn).le.dran(1)) then
-            if(agep(pn).ge.ageran(0).and.agep(pn).le.ageran(1)) then
-              write(60,161) x_p(pn),y_p(pn),z_p(pn),vx_p(pn),vy_p(pn),vz_p(pn) &
-                ,glonp(pn),glatp(pn),d3dp(pn),vglonp(pn),vlosp(pn),agep(pn) &
-                ,rxygalp(pn),vradgalp(pn),vrotgalp(pn),phigalp(pn)
-              mtotselp=mtotselp+m_p(pn)
-              vrmselp=vrmselp+vradgalp(pn)*m_p(pn)
-              vtmselp=vtmselp+vrotgalp(pn)*m_p(pn)
-              vzmselp=vzmselp+vz_p(pn)*m_p(pn)
-              vr2mselp=vr2mselp+(vradgalp(pn)**2)*m_p(pn)
-              vt2mselp=vt2mselp+(vrotgalp(pn)**2)*m_p(pn)
-              vz2mselp=vz2mselp+(vz_p(pn)**2)*m_p(pn)
-            endif
-            endif
-            endif
-            endif    
+          write(60,'(a63)') &
+!            123456789012345678901234567890123456789012345678901234567890123
+            '# x y z vx vy vz glon glat d3d vglon vlos age Rxy vrad vrot phi'
+          do i=0,nselfin-1
+            pn=listselfin(i)
+            write(60,161) x_p(pn),y_p(pn),z_p(pn),vx_p(pn),vy_p(pn),vz_p(pn) &
+             ,glonp(pn),glatp(pn),d3dp(pn),vglonp(pn),vlosp(pn),agep(pn) &
+             ,rxygalp(pn),vradgalp(pn),vrotgalp(pn),phigalp(pn)
+            mtotselp=mtotselp+m_p(pn)
+            vrmselp=vrmselp+vradgalp(pn)*m_p(pn)
+            vtmselp=vtmselp+vrotgalp(pn)*m_p(pn)
+            vzmselp=vzmselp+vz_p(pn)*m_p(pn)
+            vr2mselp=vr2mselp+(vradgalp(pn)**2)*m_p(pn)
+            vt2mselp=vt2mselp+(vrotgalp(pn)**2)*m_p(pn)
+            vz2mselp=vz2mselp+(vz_p(pn)**2)*m_p(pn)
           enddo
           close(60)
           if(mtotselp.gt.0.0d0) then
@@ -467,7 +610,6 @@ program lbsels
            ,'Dxy_t HRV_t Mod_t Dmin_tp xp yp zp xt yt zt e_PMRA e_PMDEC PMR' &
            ,'ADEC_corr logPer Vlat Vx Vy Vz D3d'
 !            12345678901234567890123456789012345678901234567890123456789012'
-
 
             do i=0,ntargs-1
               ncanp=0

@@ -1,5 +1,5 @@
 EXEC=lbsels
-OBJS = module.o main.o rdata.o para.o allocate.o
+OBJS = module.o main.o rdata.o para.o allocate.o ran.o
 DEFFILE=module.f90
 OPTIONS= -frecord-marker=4 -g
 ### for MPI
