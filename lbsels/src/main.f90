@@ -266,6 +266,15 @@ program lbsels
 ! age for star
           agep(i)=(tu-ts_p(i))*TMUGYR
         enddo
+! if the glon range is setted with negative values
+        if(glonran(0).lt.0.0d0) then
+          do i=0,np-1
+            if(glonp(i).gt.180.0d0) then
+              glonp(i)=glonp(i)-360.0d0
+            endif
+          enddo
+        endif
+
 ! output *** not parallelised ***
 ! for gas
         if(ng.gt.0) then
