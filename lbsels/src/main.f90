@@ -454,7 +454,7 @@ program lbsels
           write(60,'(a30,2(1pE13.5))') '#           b range min,max =' &
             ,glatran(0),glatran(1)
           write(60,'(a30,2(1pE13.5))') '#    distance range min,max =' &
-            ,glatran(0),glatran(1)
+            ,dran(0),dran(1)
           write(60,'(a30,2(1pE13.5))') '#        for star age range =' &
             ,ageran(0),ageran(1)
           write(60,'(a63)') &
