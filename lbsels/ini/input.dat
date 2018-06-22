@@ -1,11 +1,12 @@
-2549        ! step
-100 1000       ! nskip, nskip for selected ones
-8.0 0.0 90.0    ! Rsun, zsun, angle
--10.0 220.0 0.0   ! Vrad,V,W_sun
-0.0 360.0        ! glon range
--10.0 10.0       ! glat range
+100        ! step
+1 0       ! nskip, nskip for selected ones, nskip>0 nselout=nskip
+8.0 0.0 0.0    ! Rsun, zsun, angle
+-10.0 235.0 0.0   ! Vrad,V,W_sun
+140.0 220.0        ! glon range
+-90.0 90.0       ! glat range
 0.0 4.0          ! distance range (kpc)
--0.2 0.2         ! z range (kpc)
-0.0 1.0          ! age range (Gyr)
-1                ! if not 0, read ini/axsymdiskm-fit_sels.asc and pick particles close to the data
-225.0              ! search degree radius to look for the closest particle
+-0.5 0.5         ! z range (kpc)
+0.2 0.5         ! age range (Gyr)
+0                ! if not 0, 1: read ini/axsymdiskm-fit_sels.asc and pick particles close to the data, otherwise read ini/sels_rv.asc
+1.0              ! search degree radius to look for the closest particle
+1                ! if not 0, allow duplicates when sampling from target

@@ -1,6 +1,5 @@
 ! /***************************************
-!   lbsels ver.2
-!  31 Jan. 2018  written by D.Kawata
+!   lbsels
 ! ****************************************/
 
 program lbsels
@@ -16,7 +15,7 @@ program lbsels
       integer npt,ngt,nst,ndmt,ndm1t,ndm,ndm1
       integer step,is,ic
       integer nval
-      integer flagc,flagcom,flagr,flagtargetf
+      integer flagc,flagcom,flagr,flagtargetf,flagdup
       integer idr(0:1)
       integer ierr
       character chread*9
@@ -36,7 +35,7 @@ program lbsels
       double precision modp,vradxyp
       double precision,allocatable :: glonp(:),glatp(:),dxyp(:) &
        ,d3dp(:),vglonp(:),vglatp(:),vlosp(:),agep(:),vradgalp(:),vrotgalp(:) &
-       ,rxygalp(:),phigalp(:)
+       ,rxygalp(:),phigalp(:),fehp(:)
       double precision vrmselp,vtmselp,vzmselp,vr2mselp,vt2mselp,vz2mselp &
        ,mtotselp
       double precision vrsig,vtsig,vzsig
@@ -52,7 +51,7 @@ program lbsels
        ,vlons(:),errhrvs(:),errvlons(:),mods(:),errmods(:) &
        ,dists(:),distmins(:),distmaxs(:),xts(:),yts(:),zts(:) &
        ,ras(:),decs(:),pmras(:),pmdecs(:),errpmras(:),errpmdecs(:) &
-       ,pmradec_corrs(:),logps(:)
+       ,pmradec_corrs(:),logps(:),loggs(:),teffs(:),vmags(:),vicols(:),avs(:)
       character(len=20),allocatable :: names(:)
 ! to sample
       integer ncanp
@@ -101,6 +100,7 @@ program lbsels
         read(50,*) ageran(0),ageran(1)
         read(50,*) flagtargetf
         read(50,*) degrange
+        read(50,*) flagdup
         close(50)
         write(6,*) ' step=',step 
         write(6,*) ' output nskip for lb*.dat=',nskip
@@ -116,24 +116,33 @@ program lbsels
         write(6,*) '    distance range min,max =',dran(0),dran(1)
         write(6,*) ' for star age range=',ageran(0),ageran(1)
         if(flagtargetf.ne.0) then
-          write(6,*) ' read ini/axsymdiskm-fit_sels.asc, target position file'
+          if(flagtargetf.eq.1) then
+            write(6,*) ' read ini/axsymdiskm-fit_sels.asc, target position file'
+          else
+            write(6,*) ' read ini/sels_rv.asc, target position file'
+          endif
           write(6,*) ' search degree range=',degrange
+          if(flagdup.ne.0) then
+            write(6,*) ' allow duplicates'
+          endif
         endif
       endif
 
-      nval=4
+      nval=5
       allocate(tivr(0:nval-1))
       if(myrank.eq.0) then
         tivr(0)=step
         tivr(1)=nskip
         tivr(2)=nselout
         tivr(3)=flagtargetf
+        tivr(4)=flagdup
       endif
       call MPI_BCAST(tivr,nval,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       step=tivr(0)
       nskip=tivr(1)
       nselout=tivr(2)
       flagtargetf=tivr(3)
+      flagdup=tivr(4)
       deallocate(tivr)
 
       nval=17
@@ -241,6 +250,7 @@ program lbsels
         allocate(vglatp(0:np-1))
         allocate(vlosp(0:np-1))
         allocate(agep(0:np-1))
+        allocate(fehp(0:np-1))
 
         do i=0,np-1
           d3dp(i)=dsqrt(x_p(i)**2+y_p(i)**2+z_p(i)**2)
@@ -263,8 +273,9 @@ program lbsels
 ! rad to deg
           glonp(i)=glonp(i)*180.0d0/M_PI
           glatp(i)=glatp(i)*180.0d0/M_PI
-! age for star
+! age and [Fe/H](=0.0 for now)  for star
           agep(i)=(tu-ts_p(i))*TMUGYR
+          fehp(i)=0.0d0
         enddo
 ! if the glon range is setted with negative values
         if(glonran(0).lt.0.0d0) then
@@ -508,8 +519,12 @@ program lbsels
 ! read target star files
           if(flagtargetf.ne.0) then
             if(myrank.eq.0) then
-              open(50,file='ini/axsymdiskm-fit_sels.asc',status='unknown')
-              read(50,'(A9,I10)') chread,ntargs
+              if(flagtargetf.eq.1) then
+                open(50,file='ini/axsymdiskm-fit_sels.asc',status='unknown')
+              else
+                open(50,file='ini/sels_rv.asc',status='unknown')
+                read(50,'(A9,I10)') chread,ntargs
+              endif
               write(6,*) ' N target stars=',ntargs
             endif
             call MPI_BCAST(ntargs,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
@@ -537,67 +552,125 @@ program lbsels
             allocate(errpmdecs(0:ntargs-1))   
             allocate(pmradec_corrs(0:ntargs-1))   
             allocate(logps(0:ntargs-1))   
+            allocate(loggs(0:ntargs-1))   
+            allocate(teffs(0:ntargs-1))   
             allocate(names(0:ntargs-1))
+            allocate(vmags(0:ntargs-1))
+            allocate(vicols(0:ntargs-1))
+            allocate(avs(0:ntargs-1))
     
             if(myrank.eq.0) then
-              do i=0,ntargs-1
-                read(50,'(17(1pE13.5),1x,a20)') glons(i),glats(i),distxys(i) &
-                 ,hrvs(i),vlons(i),errhrvs(i),errvlons(i),mods(i),errmods(i) &
-                 ,ras(i),decs(i),pmras(i),pmdecs(i),errpmras(i),errpmdecs(i) &
-                 ,pmradec_corrs(i),logps(i),names(i)
-              enddo
+               if(flagtargetf.eq.1) then
+                 do i=0,ntargs-1
+                   read(50,'(17(1pE13.5),1x,a20)') glons(i),glats(i) &
+                     ,distxys(i),hrvs(i),vlons(i),errhrvs(i),errvlons(i) &
+                     ,mods(i),errmods(i),ras(i),decs(i),pmras(i) &
+                     ,pmdecs(i),errpmras(i),errpmdecs(i) &
+                     ,pmradec_corrs(i),logps(i),names(i)
+                 enddo
+               else
+                 do i=0,ntargs-1
+                   read(50,'(15(1pE13.5))') xts(i),yts(i),zts(i) &
+                     ,hrvs(i),errhrvs(i),vmags(i),vicols(i),ras(i),decs(i) &
+                     ,glons(i),glats(i),dists(i),teffs(i),loggs(i),avs(i)
+                 enddo
+               endif
             endif
+
             call MPI_BCAST(glons,ntargs,MPI_DOUBLE_PRECISION,0 &
               ,MPI_COMM_WORLD,ierr)
             call MPI_BCAST(glats,ntargs,MPI_DOUBLE_PRECISION,0 &
               ,MPI_COMM_WORLD,ierr)
-            call MPI_BCAST(distxys,ntargs,MPI_DOUBLE_PRECISION,0 &
-              ,MPI_COMM_WORLD,ierr)
             call MPI_BCAST(hrvs,ntargs,MPI_DOUBLE_PRECISION,0 &
               ,MPI_COMM_WORLD,ierr)
-            call MPI_BCAST(vlons,ntargs,MPI_DOUBLE_PRECISION,0 &
-              ,MPI_COMM_WORLD,ierr)
             call MPI_BCAST(errhrvs,ntargs,MPI_DOUBLE_PRECISION,0 &
-              ,MPI_COMM_WORLD,ierr)
-            call MPI_BCAST(errvlons,ntargs,MPI_DOUBLE_PRECISION,0 &
-              ,MPI_COMM_WORLD,ierr)
-            call MPI_BCAST(mods,ntargs,MPI_DOUBLE_PRECISION,0 &
-              ,MPI_COMM_WORLD,ierr)
-            call MPI_BCAST(errmods,ntargs,MPI_DOUBLE_PRECISION,0 &
               ,MPI_COMM_WORLD,ierr)
             call MPI_BCAST(ras,ntargs,MPI_DOUBLE_PRECISION,0 &
               ,MPI_COMM_WORLD,ierr)
             call MPI_BCAST(decs,ntargs,MPI_DOUBLE_PRECISION,0 &
               ,MPI_COMM_WORLD,ierr)
-            call MPI_BCAST(pmras,ntargs,MPI_DOUBLE_PRECISION,0 &
-              ,MPI_COMM_WORLD,ierr)
-            call MPI_BCAST(pmdecs,ntargs,MPI_DOUBLE_PRECISION,0 &
-              ,MPI_COMM_WORLD,ierr)
-            call MPI_BCAST(errpmras,ntargs,MPI_DOUBLE_PRECISION,0 &
-              ,MPI_COMM_WORLD,ierr)
-            call MPI_BCAST(errpmdecs,ntargs,MPI_DOUBLE_PRECISION,0 &
-              ,MPI_COMM_WORLD,ierr)
-            call MPI_BCAST(pmradec_corrs,ntargs,MPI_DOUBLE_PRECISION,0 &
-              ,MPI_COMM_WORLD,ierr)
-            call MPI_BCAST(logps,ntargs,MPI_DOUBLE_PRECISION,0 &
-              ,MPI_COMM_WORLD,ierr)
-            call MPI_BCAST(names,ntargs,MPI_CHARACTER,0 &
-              ,MPI_COMM_WORLD,ierr)
+
+            if(flagtargetf.eq.0) then
+              ! info only from axsymdiskm-fit_sels.asc
+              call MPI_BCAST(distxys,ntargs,MPI_DOUBLE_PRECISION,0 &
+                ,MPI_COMM_WORLD,ierr)
+              call MPI_BCAST(vlons,ntargs,MPI_DOUBLE_PRECISION,0 &
+                ,MPI_COMM_WORLD,ierr)
+              call MPI_BCAST(errvlons,ntargs,MPI_DOUBLE_PRECISION,0 &
+                ,MPI_COMM_WORLD,ierr)
+              call MPI_BCAST(mods,ntargs,MPI_DOUBLE_PRECISION,0 &
+                ,MPI_COMM_WORLD,ierr)
+              call MPI_BCAST(errmods,ntargs,MPI_DOUBLE_PRECISION,0 &
+                ,MPI_COMM_WORLD,ierr)
+              call MPI_BCAST(pmras,ntargs,MPI_DOUBLE_PRECISION,0 &
+                ,MPI_COMM_WORLD,ierr)
+              call MPI_BCAST(pmdecs,ntargs,MPI_DOUBLE_PRECISION,0 &
+                ,MPI_COMM_WORLD,ierr)
+              call MPI_BCAST(errpmras,ntargs,MPI_DOUBLE_PRECISION,0 &
+                ,MPI_COMM_WORLD,ierr)
+              call MPI_BCAST(errpmdecs,ntargs,MPI_DOUBLE_PRECISION,0 &
+                ,MPI_COMM_WORLD,ierr)
+              call MPI_BCAST(pmradec_corrs,ntargs,MPI_DOUBLE_PRECISION,0 &
+                ,MPI_COMM_WORLD,ierr)
+              call MPI_BCAST(logps,ntargs,MPI_DOUBLE_PRECISION,0 &
+               ,MPI_COMM_WORLD,ierr)
+              call MPI_BCAST(names,ntargs,MPI_CHARACTER,0 &
+                ,MPI_COMM_WORLD,ierr)
+            else
+              ! info from sels_rv.asc
+              call MPI_BCAST(xts,ntargs,MPI_DOUBLE_PRECISION,0 &
+                ,MPI_COMM_WORLD,ierr)
+              call MPI_BCAST(yts,ntargs,MPI_DOUBLE_PRECISION,0 &
+                ,MPI_COMM_WORLD,ierr)
+              call MPI_BCAST(zts,ntargs,MPI_DOUBLE_PRECISION,0 &
+                ,MPI_COMM_WORLD,ierr)
+              call MPI_BCAST(vmags,ntargs,MPI_DOUBLE_PRECISION,0 &
+                ,MPI_COMM_WORLD,ierr)
+              call MPI_BCAST(vicols,ntargs,MPI_DOUBLE_PRECISION,0 &
+                ,MPI_COMM_WORLD,ierr)
+              call MPI_BCAST(teffs,ntargs,MPI_DOUBLE_PRECISION,0 &
+                ,MPI_COMM_WORLD,ierr)
+              call MPI_BCAST(loggs,ntargs,MPI_DOUBLE_PRECISION,0 &
+                ,MPI_COMM_WORLD,ierr)
+              call MPI_BCAST(avs,ntargs,MPI_DOUBLE_PRECISION,0 &
+                ,MPI_COMM_WORLD,ierr)
+            endif
+            if(flagtargetf.eq.0) then
 ! distance range
-            do i=0,ntargs-1
-              dists(i)=(10.0d0**((mods(i)+5.0d0)/5.0d0))*0.001d0
-              distmins(i)=(10.0d0**((mods(i)-errmods(i)+5.0d0)/5.0d0))*0.001d0
-              distmaxs(i)=(10.0d0**((mods(i)+errmods(i)+5.0d0)/5.0d0))*0.001d0
+              do i=0,ntargs-1
+                dists(i)=(10.0d0**((mods(i)+5.0d0)/5.0d0))*0.001d0
+                distmins(i)=(10.0d0**((mods(i)-errmods(i)+5.0d0)/5.0d0))*0.001d0
+                distmaxs(i)=(10.0d0**((mods(i)+errmods(i)+5.0d0)/5.0d0))*0.001d0
 ! x,y,z position
-              distxyts=dists(i)*dcos(glats(i))
-              xts(i)=distxyts*dcos(glons(i))
-              yts(i)=distxyts*dsin(glons(i))
-              zts(i)=dists(i)*dsin(glats(i))
+                distxyts=dists(i)*dcos(glats(i))
+                xts(i)=distxyts*dcos(glons(i))
+                yts(i)=distxyts*dsin(glons(i))
+                zts(i)=dists(i)*dsin(glats(i))
 ! rad -> deg
-              glons(i)=glons(i)*180.0d0/M_PI
-              glats(i)=glats(i)*180.0d0/M_PI
-            enddo
-! age selection
+                glons(i)=glons(i)*180.0d0/M_PI
+                glats(i)=glats(i)*180.0d0/M_PI
+              enddo
+            else
+              do i=0,ntargs-1
+                ! assuming 15% uncertainty
+                distmins(i)=dists(i)-0.15*dists(i)
+                distmaxs(i)=dists(i)+0.15*dists(i)
+                distxys(i)=dists(i)*cos(glats(i)*M_PI/180.0d0)
+                vlons(i)=0.0d0
+                errvlons(i)=0.0d0
+                mods(i)=0.0d0
+                errmods(i)=0.0d0
+                pmras(i)=0.0d0
+                errpmras(i)=0.0d0
+                pmdecs(i)=0.0d0
+                errpmdecs(i)=0.0d0
+                pmradec_corrs(i)=0.0d0
+                logps(i)=0.0d0
+                names(i)=' '
+              enddo
+            endif
+    
+! target selection
             allocate(listagep(0:np-1))
             allocate(flagtaken(0:np-1))
             do i=0,np-1
@@ -613,13 +686,23 @@ program lbsels
             enddo
 ! find particles 
             allocate(listcanp(0:ns-1))
-            open(60,file='output/lbsels_targets.dat',status='unknown')
-            write(60,'(a60,a60,a34)') &
-            '# Glon Glat Dxy HRV Vlon e_HRV e_Vlon Mod e_Mod Glon_t Glat_t ' &
-           ,'Dxy_t HRV_t Mod_t Dmin_tp xp yp zp xt yt zt e_PMRA e_PMDEC PMR' &
-           ,'ADEC_corr logPer Vlat Vx Vy Vz D3d'
+            if(flagtargetf.eq.0) then
+              open(60,file='output/lbsels_targets.dat',status='unknown')
+              write(60,'(a62,a62,a34)') &
 !            12345678901234567890123456789012345678901234567890123456789012'
-
+            '# Glon Glat Dxy HRV Vlon e_HRV e_Vlon Mod e_Mod Glon_t Glat_t ' &
+!             12345678901234567890123456789012345678901234567890123456789012'
+            ,'Dxy_t HRV_t Mod_t Dmin_tp xp yp zp xt yt zt e_PMRA e_PMDEC PMR' &
+!             12345678901234567890123456789012345678901234567890123456789012'
+            ,'ADEC_corr logPer Vlat Vx Vy Vz D3d'
+            else
+              open(60,file='output/lbsels_targets_rv.dat',status='unknown')
+              write(60,'(a46,a49)') &
+!               12345678901234567890123456789012345678901234567890123456789012'
+               '# Glon Glat D3D xp yp zp vxp vyp vzp HRV Vlon ' &
+              ,'FeH Age V VIcol xt yt zt HRV_t e_HRV Teff logg Av'
+!               12345678901234567890123456789012345678901234567890123456789012'
+            endif
             do i=0,ntargs-1
               ncanp=0
               danglim=degrange
@@ -652,7 +735,7 @@ program lbsels
                 nsearch=nsearch+1
                 goto 70
               endif 
-              if(nsearch.gt.0) then
+              if(nsearch.gt.3) then
                 write(6,*) i,'star, Nsearch=',nsearch &
                           ,' final ang,dist min max=',danglim &
                   ,distlimmin,distlimmax
@@ -671,20 +754,28 @@ program lbsels
               if(pn.eq.-1) then
                 write(6,*) i,' star could not find particle'
                 stop
-              else 
+              else if(flagdup.eq.0) then
                 flagtaken(pnts)=1
               endif
               modp=5.0d0*dlog10(d3dp(pnts)*1000.0d0)-5.0d0
-              write(60,'(31(1pE13.5))') glonp(pnts),glatp(pnts) & 
-                ,dxyp(pnts),vlosp(pnts),vglonp(pnts),errhrvs(i),errvlons(i) &
-                ,modp,errmods(i) &
-                ,glons(i),glats(i),distxys(i),hrvs(i),vlons(i),mods(i) &
-                ,disptsmin,x_p(pnts),y_p(pnts),z_p(pnts),xts(i),yts(i),zts(i) &
-                ,errpmras(i),errpmdecs(i) &
-                ,pmradec_corrs(i),logps(i) &
-                ,vglatp(pnts),vx_p(pnts),vy_p(pnts),vz_p(pnts),d3dp(pnts)
+              if(flagtargetf.eq.0) then
+                write(60,'(31(1pE13.5))') &
+                 glonp(pnts),glatp(pnts),dxyp(pnts),vlosp(pnts),vglonp(pnts) &
+                ,errhrvs(i),errvlons(i),modp,errmods(i),glons(i) &
+                ,glats(i),distxys(i),hrvs(i),vlons(i),mods(i) &
+                ,disptsmin,x_p(pnts),y_p(pnts),z_p(pnts),xts(i) &
+                ,yts(i),zts(i),errpmras(i),errpmdecs(i),pmradec_corrs(i) &
+                ,logps(i),vglatp(pnts),vx_p(pnts),vy_p(pnts),vz_p(pnts) &
+                ,d3dp(pnts)
+              else
+                write(60,'(23(1pE13.5))')  &
+                  glonp(pnts),glatp(pnts),d3dp(pnts),x_p(pnts),y_p(pnts) &
+                 ,z_p(pnts),vx_p(pnts),vy_p(pnts),vz_p(pnts),vlosp(pnts) &
+                 ,vglonp(pnts),fehp(pnts),agep(pnts),vmags(i),vicols(i) &
+                 ,xts(i),yts(i),zts(i),hrvs(i),errhrvs(i) &
+                 ,teffs(i),loggs(i),avs(i)
+              endif
             enddo
-
 ! deallocate
             deallocate(glons)
             deallocate(glats)
@@ -703,7 +794,6 @@ program lbsels
             deallocate(zts)
             deallocate(listagep)
             deallocate(flagtaken)
-
           endif
         endif
         deallocate(glonp)    
