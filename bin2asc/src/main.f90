@@ -19,12 +19,14 @@ program bin2asc
       integer npt,ngt,nst,ndmt,ndm1t
       integer ng,ndm,ndm1,ns
       integer nstep,step
-      integer nskip,flagr,flagcom,flagbo,flagout
+      integer nskip,flagr,flagcom,flagbo,flagout,flagselp
       integer ierr
 ! for checking test particle informatoin
       integer,allocatable :: flagrp(:),flagra(:),flagzm(:)
       double precision,allocatable :: rperi(:),rapo(:),zmax(:)
       double precision,allocatable :: rperi0(:),rapo0(:),zmax0(:)
+! for the selection volume
+      double precision rrange(0:1),zrange(0:1)
 ! for work
       integer,allocatable :: tivr(:)
       double precision,allocatable :: tdvr(:)
@@ -59,6 +61,9 @@ program bin2asc
         read(50,*) flagcom
         read(50,*) flagbo
         read(50,*) flagout
+        read(50,*) flagselp
+        read(50,*) rrange(0),rrange(1)
+        read(50,*) zrange(0),zrange(1)
         close(50)
 
         if(nstep.gt.1) then
@@ -77,9 +82,21 @@ program bin2asc
         if(flagout.eq.1) then
           write(6,*) ' output test particle info.'
         endif
+        if(flagselp.ne.0) then
+          if(flagselp.eq.1) then
+            write(6,*) ' select gas particles'
+         else if(flagselp.eq.2) then
+            write(6,*) ' select DM particles'
+         else if(flagselp.eq.3) then
+            write(6,*) ' select star particles'
+         else
+            write(6,*) 'Error: flagselp should be 0-3'
+            call MPI_FINALIZE()            
+            stop
+         endif
       endif
 
-      nval=7
+      nval=8
       allocate(tivr(0:nval-1))
       if(myrank.eq.0) then
         tivr(0)=nstep
@@ -89,6 +106,7 @@ program bin2asc
         tivr(4)=flagcom
         tivr(5)=flagbo
         tivr(6)=flagout
+        tivr(7)=flagselp
       endif
       call MPI_BCAST(tivr,nval,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       nstep=tivr(0)
@@ -98,7 +116,27 @@ program bin2asc
       flagcom=tivr(4)
       flagbo=tivr(5)
       flagout=tivr(6)
+      flagselp=tivr(7)
       deallocate(tivr)
+
+      if(flagselp.ne.0) then
+        nval=4
+        allocate(tdvr(0:nval-1))
+        if(myrank.eq.0) then
+          tdvr(0)=rrange(0)
+          tdvr(1)=rrange(1)
+          tdvr(2)=zrange(0)
+          tdvr(3)=zrange(1)
+        endif
+      endif
+      call MPI_BCAST(tdvr,nval,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
+      rrange(0)=tdvr(0)
+      rrange(1)=tdvr(1)
+      zrange(0)=tdvr(2)
+      zrange(1)=tdvr(3)
+      deallocate(tdvr)
+        
+      endif
 
       ! call MPI_BCAST(tdvr,nval,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
 
@@ -181,7 +219,7 @@ program bin2asc
           ai=1.0d0
         endif
         call output(ngt,ng,ndmt,ndm,ndm1t,ndm1,nst,ns &
-          ,flagr,step,nskip,ai,flagbo,flagout)
+          ,flagr,step,nskip,ai,flagbo,flagout,flagselp,rrange,zrange)
 
       enddo
       if(myrank.eq.0) then

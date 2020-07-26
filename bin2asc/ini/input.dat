@@ -1,9 +1,12 @@
-1 2549   ! nstep, step, if nstep>1, read ini/file.dat, otherwise use step
+1 0   ! nstep, step, if nstep>1, read ini/file.dat, otherwise use step
 1          ! 0: simple output
-10          ! nskip for output particles
+1          ! nskip for output particles
 1           ! if 0: output comoving position
 1           ! if 0: output only for high-reso DM with binary
 0           ! if 1: output TESTP info.
+2           ! flagselp: if not 0 select particles in the volume defined the following lines, 1: gas, 2:DM, 3:star
+0.0 1.0    ! radial range (100 kpc)
+-1.0 1.0  ! z range (100 kpc)
 
 
  input.dat for pver.1

@@ -4,7 +4,7 @@
 ! ****************************************************/
 
 subroutine output(ngt,ng,ndmt,ndm,ndm1t,ndm1,nst,ns &
-       ,flagr,step,nskip,asc,flagbo,flago)
+       ,flagr,step,nskip,asc,flagbo,flago,flagselp,rrange,zrange)
       use gcdp_const
       use gcdp_system
       use gcdp_baryon
@@ -14,11 +14,11 @@ subroutine output(ngt,ng,ndmt,ndm,ndm1t,ndm1,nst,ns &
       include 'mpif.h'
       
       integer,intent(in) ::  ngt,ng,ndmt,ndm,ndm1t,ndm1,nst,ns,flagr,nskip &
-        ,step,flagbo,flago
-      double precision,intent(in) :: asc
+        ,step,flagbo,flago,flagselp
+      double precision,intent(in) :: asc,rrange(0:1),zrange(0:1)
       double precision asci
       integer nvals,nivals
-      integer i,ip,ip2,npj,pn,np,ngo,ndmo,nso,nc
+      integer i,ip,ip2,npj,pn,np,ngo,ndmo,nso,nc,nselp
       double precision nhp,temp,rp,gam
 ! for test particle info
       double precision rmp,eccp
@@ -43,6 +43,54 @@ subroutine output(ngt,ng,ndmt,ndm,ndm1t,ndm1,nst,ns &
       asci=1.0d0/asc
 
       gam=5.0d0/3.0d0
+
+! number of selected particles
+      nselp=0
+      if(flagselp.ne.0) then
+        if(flagselp.eq.1) then
+          do i=0,ng-1
+            pn=list_ap(i)
+            rp=dsqrt(x_p(pn)**2+y_p(pn)**2+z_p(pn)**2)
+            if(rp.gt.rrange(0).and.rp.lt.rrange(1)) then
+              if(z_p(pn).gt.zrange(0).and.z_p(pn).lt.zrange(1)) then   
+                nselp=nselp+1
+              endif
+            endif
+          enddo 
+       else if(flagselp.eq.2) then
+          do i=0,ndm-1
+            rp=dsqrt(x_dm(i)**2+y_dm(i)**2+z_dm(i)**2)
+            if(rp.gt.rrange(0).and.rp.lt.rrange(1)) then
+              if(z_dm(i).gt.zrange(0).and.z_dm(i).lt.zrange(1)) then
+                nselp=nselp+1
+              endif
+            endif
+          enddo 
+        else if(flagselp.eq.2) then
+          do i=ng,ng+ns-1
+            pn=list_ap(i)
+            rp=dsqrt(x_p(pn)**2+y_p(pn)**2+z_p(pn)**2)
+            if(rp.gt.rrange(0).and.rp.lt.rrange(1)) then
+              if(z_p(pn).gt.zrange(0).and.z_p(pn).lt.zrange(1)) then   
+                nselp=nselp+1
+              endif
+            endif
+          enddo 
+        endif
+        allocate(tivs(0:0))
+        allocate(tivr(0:0))
+        tivs(0)=nselp
+        tivr(0)=0
+        call MPI_ALLREDUCE(tivs,tivr,1,MPI_INTEGER &
+             ,MPI_MAX,MPI_COMM_WORLD,ierr)
+        nselp=tivr(0)
+        deallocate(tivs)        
+        deallocate(tivr)
+        if(myrank.eq.0) then
+          write(6,*) ' N selected particle=',nselp
+        endif
+      endif
+      
       ngo=0
       ndmo=0
       nso=0
@@ -122,6 +170,11 @@ subroutine output(ngt,ng,ndmt,ndm,ndm1t,ndm1,nst,ns &
         if(myrank.eq.0) then
           write(fileo,'(a8,i6.6)') 'output/g',step
           open(61,file=fileo,status='unknown')
+          if(flagselp.eq.1) then
+            write(fileo,'(a11,i6.6,a4)') 'output/selg',step,'.bin'
+            open(63,file=fileo,status='unknown',form='unformatted')
+            write(63) nselp
+          endif             
           do ip=0,nprocs-1
             if(ip.eq.myrank) then
               do i=0,npjr(myrank)*nivals-1
@@ -142,6 +195,18 @@ subroutine output(ngt,ng,ndmt,ndm,ndm1t,ndm1,nst,ns &
 ! *** write the data
             npj=npjr(ip)
             ngo=ngo+npj
+            if(flagselp.eq.1) then
+              do i=0,npj-1
+                rp=dsqrt(tdvr(i)**2+tdvr(i+npj)**2+tdvr(i+npj*2)**2)
+                if(rp.gt.rrange(0).and.rp.lt.rrange(1)) then
+                  if(tdvr(i+npj*2).gt.zrange(0) &
+                    .and.tdvr(i+npj*2).lt.zrange(1)) then
+                    write(63) tdvr(i),tdvr(i+npj),tdvr(i+npj*2) &
+                      ,tdvr(i+npj*3),tdvr(i+npj*4),tdvr(i+npj*5)
+                  endif
+                endif
+              enddo
+            endif  
             if(flagr.eq.0) then
               do i=0,npj-1
                 write(61,161) tdvr(i),tdvr(i+npj),tdvr(i+npj*2) &
@@ -175,6 +240,9 @@ subroutine output(ngt,ng,ndmt,ndm,ndm1t,ndm1,nst,ns &
             endif
           enddo
           close(61)
+          if(flagselp.eq.1) then
+            close(63)
+          endif  
         else
 ! *** sending the data to rank 0 ***
           ip=myrank
@@ -256,6 +324,13 @@ subroutine output(ngt,ng,ndmt,ndm,ndm1t,ndm1,nst,ns &
             write(fileo,'(a9,i6.6)') 'output/ld',step
             open(62,file=fileo,status='unknown')
           endif
+          if(flagselp.eq.2) then
+            write(fileo,'(a11,i6.6,a4)') 'output/seld',step,'.bin'
+!            open(63,file=fileo,status='unknown')
+!            write(63,*) '# ',nselp                        
+            open(63,file=fileo,status='unknown',form='unformatted')
+            write(63) nselp
+          endif             
           do ip=0,nprocs-1
             if(ip.eq.myrank) then
               do i=0,npjr(myrank)-1
@@ -276,6 +351,20 @@ subroutine output(ngt,ng,ndmt,ndm,ndm1t,ndm1,nst,ns &
 ! *** write the data
             npj=npjr(ip)
             ndmo=ndmo+npj
+            if(flagselp.eq.2) then
+              do i=0,npj-1
+                rp=dsqrt(tdvr(i)**2+tdvr(i+npj)**2+tdvr(i+npj*2)**2)
+                if(rp.gt.rrange(0).and.rp.lt.rrange(1)) then
+                  if(tdvr(i+npj*2).gt.zrange(0) &
+                    .and.tdvr(i+npj*2).lt.zrange(1)) then
+                    write(63) tdvr(i),tdvr(i+npj),tdvr(i+npj*2) &
+                         ,tdvr(i+npj*3),tdvr(i+npj*4),tdvr(i+npj*5)
+!                    write(63,*) tdvr(i),tdvr(i+npj),tdvr(i+npj*2) &
+!                      ,tdvr(i+npj*3),tdvr(i+npj*4),tdvr(i+npj*5)
+                  endif
+                endif
+              enddo
+            endif  
             if(flagbo.eq.0) then
               do i=0,npj-1
                 if(tivr(i).lt.ndm1t) then
@@ -322,6 +411,9 @@ subroutine output(ngt,ng,ndmt,ndm,ndm1t,ndm1,nst,ns &
           close(61)
           if(flagbo.ne.0) then
             close(62)
+          endif
+          if(flagselp.eq.2) then
+            close(63)
           endif
         else
           ip=myrank
@@ -415,6 +507,11 @@ subroutine output(ngt,ng,ndmt,ndm,ndm1t,ndm1,nst,ns &
         if(myrank.eq.0) then
           write(fileo,'(a8,i6.6)') 'output/s',step
           open(61,file=fileo,status='unknown')
+          if(flagselp.eq.1) then
+            write(fileo,'(a11,i6.6,a4)') 'output/sels',step,'.bin'
+            open(63,file=fileo,status='unknown',form='unformatted')
+            write(63) nselp
+          endif             
           do ip=0,nprocs-1
             if(ip.eq.myrank) then
               do i=0,npjr(myrank)*nivals-1
@@ -437,6 +534,18 @@ subroutine output(ngt,ng,ndmt,ndm,ndm1t,ndm1,nst,ns &
 ! *** write the data
             npj=npjr(ip)
             nso=nso+npj
+            if(flagselp.eq.3) then
+              do i=0,npj-1
+                rp=dsqrt(tdvr(i)**2+tdvr(i+npj)**2+tdvr(i+npj*2)**2)
+                if(rp.gt.rrange(0).and.rp.lt.rrange(1)) then
+                  if(tdvr(i+npj*2).gt.zrange(0) &
+                    .and.tdvr(i+npj*2).lt.zrange(1)) then
+                    write(63) tdvr(i),tdvr(i+npj),tdvr(i+npj*2) &
+                      ,tdvr(i+npj*3),tdvr(i+npj*4),tdvr(i+npj*5)
+                  endif
+                endif
+              enddo
+            endif  
             if(flagr.eq.0) then
               do i=0,npj-1
                 write(61,164) tdvr(i),tdvr(i+npj),tdvr(i+npj*2) &
@@ -462,6 +571,9 @@ subroutine output(ngt,ng,ndmt,ndm,ndm1t,ndm1,nst,ns &
             endif
           enddo
           close(61)
+          if(flagselp.eq.3) then
+            close(63)
+          endif   
         else
           ip=myrank
           call MPI_ISEND(tivs,np*nivals,MPI_INTEGER,0,myrank &

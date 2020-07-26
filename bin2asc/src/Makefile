@@ -4,7 +4,7 @@ DEFFILE=module.f90
 OPTIONS= -frecord-marker=4 -g
 ### for MPI
 # mac
-MPI_DIR = /usr/local
+MPI_DIR = /Users/dkawata/anaconda3
 #  kepler
 # MPI_DIR=/cluster/mpich_3.2
 FORT = ${MPI_DIR}/bin/mpif90
